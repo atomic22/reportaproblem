@@ -1,0 +1,9 @@
+;$Id$
+name = Report A Problem
+description = A problem reporting system for citizen of the community to report issues to various departments within the city structure
+core = 7.x
+package = Report a Problem
+version = 7.x-0.1-dev
+configure = admin/config/rap/manage
+files[] = rap.module
+files[] = rap.controller.inc

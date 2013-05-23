@@ -1,0 +1,208 @@
+<?php
+
+/**
+ * @file
+ * Drupal hooks
+ * Report a problem module
+ * drupal_get_schema(NULL, TRUE);
+ */
+
+@require_once(drupal_get_path('module', 'rap') . '/rap.db.inc');
+@require_once(drupal_get_path('module', 'rap') . '/rap.controller.inc');
+/**
+*  Implements hook_help().
+**/
+function rap_help($path, $arg){
+  if ($path == "admin/help#rap"){
+	  return t('Allows citizens to report a problem');
+  }
+}
+
+/**
+ * Implementation of hook_entity_info().
+*/
+function rap_problems_entity_info() {
+   $return['rap_problems'] = array(
+       'label' => t('Problems'),
+       'controller class' => 'RAPController',
+       'base table' => 'rap_problems',
+       'uri callback' => 'problems_uri',
+       'fieldable' => TRUE,
+       'entity keys' => array(
+           'id' => 'pid',
+           'bundle' => 'did',
+           'label' => 'title',
+       ),
+       'bundle keys' => array(
+           'bundle' => 'did',
+       ),
+       'static cache' => TRUE,
+       'bundles' => array(),
+       'view modes' => array(
+           'full' => array(
+               'label' => t('Full Content'),
+               'custom settings' => FALSE,
+           ),
+           'teaser' => array(
+               'label' => t('Teaser'),
+               'custom settings' => FALSE,
+           ),
+       ),
+    ); 
+    return $return;
+ }
+ 
+ /*
+  * Implements RAP problems uri.
+  */
+ function problems_uri($problems){
+     return array(
+         'path' => 'rap/' . $problems->pid,
+     );
+ }
+
+/**
+ * Implements hook_menu().
+*/
+function rap_menu() {
+  $items = array();
+  
+  $items['admin/rap'] = array(
+    'title' => 'Report a Problem',
+    'description' => 'Configure Report a Problem.',
+    'position'=> 'right',
+    'access arguments' => array('access administration pages'),
+  );
+  $items['admin/rap/addproblems'] = array(
+    'title' => 'Problems',
+    'description' => 'Add a problems to Report a Problem for citizens',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('rap_problems_form'),
+    'access arguments' => array('access administration pages'),
+    'file' => 'rap.problems.inc',
+    'file path' => drupal_get_path('module', 'rap'),
+  );
+  $items['admin/rap/addticket'] = array(
+    'title' => 'Tickets',
+    'description' => 'Add Tickets for Report a Problem.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('rap_tickets_form'),
+    'access callback' => TRUE,
+    'file' => 'rap.ticket.inc',
+    'file path' => drupal_get_path('module', 'rap')
+  );
+  $items['rap/ticket/%'] = array(
+    'title' => 'Ticket Submitted',
+    'description' => 'Problem ticket submitted successfully.',
+    'page callback' => 'rap_tickets',
+    'page arguments' => array(2),
+    'access arguments' => array('access content'),
+  );
+  return $items;
+}
+
+function rap_tickets($tid){
+  $query[]=get_title($tid);
+  $title = $query[0]->title;
+  $date = format_date($query[0]->created);
+  $pid = $query[0]->pid;
+  rap_ticket_email($pid, $query);
+  $build['paragraph'] = array(
+    '#type' => 'markup',
+    '#markup' => t('Thank you for your submission. <br />Your ticket ' . $title . '<br /> submitted '.$date.'<br /> will be routed to the proper department.'),
+  );
+  return $build;
+}
+
+
+function get_title($tid){
+  $query = db_select('rap_ticket','r');
+  $query->condition('tid', $tid, '=')
+    ->fields('r');
+      
+      
+  $result = $query->execute()->fetchObject();
+  return $result;
+}
+
+function rap_ticket_email($pid, $email_content){
+  //First email ticket to problem recipient.
+  $problemcontact[]=get_pid_contact($pid);
+//  $problemsupport =
+//  $email = $submitcontact[0]->pemail;
+//  $fname = $submitcontact[0]->pfname;
+//  $lname = $submitcontact[0]->plname;
+//  $subject = $submitcontact[0]->pname;
+  custom_simple_mail($problemcontact, $email_content);
+}
+
+function get_pid_contact($pid){
+  $request = db_select('rap_problems', 'p');
+  $request->condition('pid', $pid, '=')
+      ->fields('p');
+  
+  $result = $request->execute()->fetchObject();
+  return $result;
+}
+
+/**
+* Sends a simple email.
+* [or] Tested on 2012-05-31 using Drupal 7.12
+*
+* Usage:
+* 1) Paste all the below code into your module or include
+* 2) Configure the two @FIXME's.
+* 3) Visit /_custom_simple_mail to get an email.
+*
+* Credits:
+* @see http://api.drupal.org/api/drupal/includes%21mail.inc/function/drupal_mail_system/7#comment-17489
+* @see http://www.midwesternmac.com/blogs/jeff-geerling/wrapper-function-simple
+*
+*/
+
+function custom_simple_mail($problem_contact, $ticket_content) {
+  // @FIXME Set this value to your email address.
+  $my_email = $problem_contact[0]->pemail;
+  $message_subject = $ticket_content[0]->title;
+  $message_body = rap_format_message_body($problem_contact, $ticket_content);
+ 
+  // These value can remain empty.
+  $my_module = 'rap';
+  $my_mail_token = 'problem';
+ 
+  $from = variable_get('system_mail', $problem_contact[0]->pemail);
+  $message = array(
+    'id' => $my_module . '_' . $my_mail_token,
+    'to' => $my_email,
+    'subject' => $message_subject,
+    'body' => array($message_body),
+    'headers' => array(
+      'From' => $from,
+      'Sender' => $from,
+      'Return-Path' => $from,
+    ),
+  );
+  $system = drupal_mail_system($my_module, $my_mail_token);
+
+  // The format function must be called before calling the mail function.
+  $message = $system->format($message);
+
+  if ($system->mail($message)) {
+    custom_drupal_mail('default_from', $from, $message_subject, $message_body);
+    drupal_set_message('_custom_simple_mail SUCCESS');
+    
+  }
+  else {
+    drupal_set_message('_custom_simple_mail FAILURE');
+  }
+}
+
+function rap_format_message_body($contact_info, $ticket_info){
+    $message_body = '<html><body>';
+    $message_body .= $ticket_info[0]->description;
+    $message_body .= '<br />';
+    $message_body .= $contact_info[0]->pname;
+    $message_body .= '</body></html>';
+    return $message_body;
+    
+}

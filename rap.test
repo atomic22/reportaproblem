@@ -1,0 +1,39 @@
+<?php
+
+/*
+ * @file
+ * Report a Problem test
+ */
+
+class rapTestCase extends DrupalWebTestCase {
+    public static function getInfo(){
+        return array(
+            'name' => 'Report a Problem functionality',
+            'description' => 'Test the functionality of Report a Problem',
+            'group' => 'Report a Problem',
+        );
+    }
+
+
+public function setUp(){
+    parent::setUp('rap');
+}
+
+public function testrapCreate(){
+    //create node to edit.
+   /*
+    db_insert('rap_ticket')
+                ->fields(array(
+                    'pid' => '1',
+                    'thouseno' => '$this->randomName(3)',
+                    'tstname' => '$this->randomName(8)',                ))
+                    ->execute();
+    $num_records_after = db_query('SELECT COUNT(*) FROM {test}')->fetchField();
+    $this->assertIdentical($num_records_before + 1, (int) $num_records_after, 'Record inserts correctly.');
+    //$saved_age = db_query('SELECT age FROM {rap_ticket} WHERE tid = :tid', array(':tid' => 'Yoko'))->fetchField();
+    //$this->assertIdentical($saved_age, '29', 'Can retrieve after inserting.');
+    //$this->assertText(t('Ticket @issue_list has been created.', array('@issue_list' => $edit['issue_list'])));
+*/}
+
+
+}

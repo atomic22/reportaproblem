@@ -1,0 +1,179 @@
+<?php
+
+/*
+ * @file
+ * Report a problem installation
+ */
+
+/*
+ * Implement hook_schema().
+*/ 
+function rap_schema(){
+   $schema = array();
+   
+   $schema['rap_ticket'] = array(
+        'description' => 'Stores information about problem tickets',
+        'fields' => array (
+            'tid' => array(
+                'description' => 'Primary key for ticket table',
+                'type' => 'serial',
+                'unsigned' => TRUE,
+                'not null' => TRUE,
+            ),
+            'title' => array(
+                'description' => 'The title of the problem ticket from the complaintent',
+                'type' => 'varchar',
+                'length' => 32,
+                'not null' => TRUE,
+                'default' => ','
+            ),
+            'pid' => array(
+              'type' => 'int',
+              'size' => 'tiny',
+              'not null' => TRUE,
+            ),
+            'description' => array(
+              'type' => 'text',
+            ),
+            'ticket_fn' => array(
+              'type' => 'varchar',
+              'length' => 128,
+              'not null' => TRUE,
+              'default' => '',
+            ),
+            'ticket_ln' => array(
+              'type' => 'varchar',
+              'length' => 128,
+              'not null' => TRUE,
+              'default' => '',
+            ),
+            'ticket_email' => array(
+              'type' => 'varchar',
+              'length' => 255,
+              'not null' => TRUE,
+              'default' => '',
+            ),
+            'ticket_phone' => array(
+              'type' => 'varchar',
+              'length' => 128,
+              'not null' => TRUE,
+              'default' => '',
+            ),
+            'ticket_houseno' => array(
+              'type' => 'varchar',
+              'length' => 128,
+              'not null' => TRUE,
+              'default' => '',
+            ),
+            'created' => array(
+                'description' => 'The Unix timestamp when the ticket was created',
+                'type' => 'int',
+                'not null' => TRUE,
+                'default' => 0,
+            ),
+        ),
+        'primary key' => array('tid'),
+    );
+    $schema['rap_problems'] = array(
+        'description' => 'Stores information about problems',
+        'fields' => array (
+          'pid' => array(
+            'type' => 'serial',
+            'not null' => TRUE,
+            'description' => 'Primary Key: Unique model type identifier.',
+        ),
+            'pname' => array(
+              'type' => 'varchar',
+              'length' => 255,
+              'not null' => TRUE,
+            ),
+            'did' => array(
+              'type' => 'int',
+              'size' => 'tiny',
+              'not null' => TRUE,
+            ),
+            'pfname' => array(
+              'type' => 'varchar',
+              'length' => 128,
+              'not null' => TRUE,
+              'default' => '',
+            ),
+            'plname' => array(
+              'type' => 'varchar',
+              'length' => 128,
+              'not null' => TRUE,
+              'default' => '',
+            ),
+            'pemail' => array(
+              'type' => 'varchar',
+              'length' => 255,
+              'not null' => TRUE,
+              'default' => '',
+            ),
+            'pphone' => array(
+              'type' => 'varchar',
+              'length' => 128,
+              'not null' => TRUE,
+              'default' => '',
+            ),
+        ),
+        'primary key' => array('pid'),
+    );
+    return $schema;
+}
+
+/*
+ * Implements hook_install().
+ */
+function rap_install(){
+    $fields = array(
+    'pname'       => 'Cable Issues',
+    'did'         => 1,
+    'pfname'      => 'Cameron',
+    'plname'      => 'Thompson',
+    'pemail'      => 'cam10025@gmail.com',
+    'pphone'      => '123-4567',
+  );
+  db_insert('rap_problems')
+    ->fields($fields)
+    ->execute();
+  
+}
+
+/*
+ * Implements hook_uninstall().
+ */
+function rap_uninstall(){
+   $t = get_t();
+   
+   // Get all node IDs with rap content type.
+  $sql_query  = 'SELECT nid ';
+  $sql_query .= 'FROM {node} ';
+  $sql_query .= 'WHERE {node}.type = :type ';
+  $result = db_query($sql_query, array(':type' => 'rap'));
+
+  $nids = array();
+  foreach ($result as $row) {
+    $nids[] = $row->nid;
+  }
+
+  // Delete all rap content.
+  node_delete_multiple($nids);
+  drupal_set_message($t('Report a Problem content removed.'));
+
+  // Remove all fields and field instances.
+  $result = db_query($sql_query, array(':type' => '%rap%'));
+  foreach (field_info_instances('node', 'rap') as $field_name => $instance) {
+    field_delete_field($field_name);
+    field_delete_instance($instance);
+  }
+  drupal_set_message($t('Report A Problem field and field instances removed.'));
+   
+  // Delete the content type.
+  node_type_delete('reportaproblem') ;
+   
+   drupal_set_message($t('Report A Problem Content Type removed.'));
+   
+   // Clean up deleted fields.
+  field_purge_batch(1000);
+}
