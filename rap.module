@@ -179,7 +179,7 @@ function custom_simple_mail($problem_contact, $ticket_content) {
     'headers' => array(
       'From' => $from,
       'Sender' => $from,
-      'Return-Path' => $from,
+      'Return-Path' => $from,   
     ),
   );
   $system = drupal_mail_system($my_module, $my_mail_token);
